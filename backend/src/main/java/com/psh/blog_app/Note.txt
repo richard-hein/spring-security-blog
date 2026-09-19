@@ -1,0 +1,58 @@
+Spring Security Core Components
+=================================
+
+SecurityFilterChain
+-------------------
+The entry point for all HTTP security. A chain of filters that process every request
+before it reaches your controller. Defines which URLs are public, which need auth,
+disables CSRF, manages sessions, etc. You configure it in SecurityConfig.
+
+UserDetails
+-----------
+A simple interface representing a user: username, password, roles, and account status.
+Returned by UserDetailsService.loadUserByUsername(). Spring Security uses it during
+login to verify credentials and determine what the user can access.
+
+UserDetailsService
+------------------
+A contract with one method: loadUserByUsername(String username). Your implementation
+fetches the user from your database (or wherever) and returns a UserDetails object.
+It's the bridge between your user store and Spring's auth system.
+
+AuthenticationManager
+---------------------
+The top-level authenticator. When credentials arrive, it calls UserDetailsService to
+get the user, then uses PasswordEncoder to verify the password. Returns an
+Authentication object on success, throws exception on failure.
+
+PasswordEncoder
+---------------
+Handles hashing and verifying passwords. DelegatingPasswordEncoder supports multiple
+algorithms (bcrypt, SHA-256, etc.) via the {id} prefix in stored hashes. You encode
+on signup, verify on login.
+
+Relationship
+------------
+Request arrives
+  -> SecurityFilterChain (auth check, session filter, etc.)
+    -> AuthenticationManager.authenticate()
+      -> UserDetailsService.loadUserByUsername()  (fetch UserDetails from DB)
+      -> PasswordEncoder.matches()                (verify password hash)
+    -> Returns Authentication (authenticated principal)
+
+
+BlogUserDetails
+---------------
+Your adapter between the User entity and Spring Security's UserDetails interface.
+Wraps a User object and maps its fields to what Spring Security expects:
+
+- getAuthorities()  -> Returns ROLE_USER for every user (hardcoded, no RBAC yet)
+- getPassword()     -> Delegates to user.getPassword()
+- getUsername()     -> Uses user.getEmail() as the username
+- isAccountNonLocked() / isCredentialsNonExpired() / isEnabled() -> All true
+
+Why it exists: Your User entity doesn't implement UserDetails. Rather than bloating
+your domain model with Spring Security concerns, this class wraps it cleanly.
+
+Note: getAuthorities() is hardcoded to ROLE_USER. Add roles later by reading them
+from the User entity instead.
