@@ -56,3 +56,27 @@ your domain model with Spring Security concerns, this class wraps it cleanly.
 
 Note: getAuthorities() is hardcoded to ROLE_USER. Add roles later by reading them
 from the User entity instead.
+
+
+BlogUserDetailsService
+----------------------
+Your implementation of UserDetailsService. The class Spring Security calls during
+login to fetch the user from the database.
+
+- loadUserByUsername(String email) -> Queries UserRepository.findByEmail()
+- If user not found, throws UsernameNotFoundException
+- If found, wraps the User entity in BlogUserDetails and returns it
+
+This is the glue: Spring Security calls this -> it hits your DB -> returns a
+BlogUserDetails that Spring can use for auth.
+
+Updated Flow
+------------
+Request arrives
+  -> SecurityFilterChain (auth check, session filter, etc.)
+    -> AuthenticationManager.authenticate()
+      -> BlogUserDetailsService.loadUserByUsername(email)
+        -> UserRepository.findByEmail()              (fetch User from DB)
+        -> Returns new BlogUserDetails(user)          (wrap in UserDetails)
+      -> PasswordEncoder.matches()                    (verify password hash)
+    -> Returns Authentication (authenticated principal)
